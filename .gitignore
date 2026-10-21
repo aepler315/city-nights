@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/cesium/
+.env
+.env.*
+!.env.example
+test-results/
+*.log

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080e14" />
+    <meta name="description" content="A first-person night observatory on Quilcene Ridge. Explore real terrain, change lenses, and watch the sky over Puget Sound." />
+    <title>City Nights — Quilcene Ridge Observatory</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <main id="app">
+      <div id="world" aria-label="3D observatory"></div>
+      <div class="vignette" aria-hidden="true"></div>
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="City Nights home">
+          <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="20" cy="20" r="16"/><circle cx="20" cy="20" r="10"/><path d="M20 0v10m0 20v10M0 20h10m20 0h10m-10-5 3 8-8-3z"/></svg>
+          <span>CITY NIGHTS<small>A PUGET SOUND OBSERVATORY</small></span>
+        </a>
+        <div class="top-actions">
+          <button id="home" class="quiet-button" title="Return to the original viewpoint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8M6 9v12h12V9m-8 12v-7h4v7"/></svg><span>Return to ridge</span></button>
+          <button id="info" class="icon-button" aria-label="About the simulation">i</button>
+          <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button>
+          <button id="toggle-controls" class="icon-button" aria-label="Toggle observation controls" aria-expanded="true" aria-controls="controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6m6 4v6"/></svg></button>
+        </div>
+      </header>
+
+      <button id="stream-status-button" class="stream-status" type="button" aria-haspopup="dialog" aria-controls="status-dialog" aria-describedby="stream-status-detail" data-state="loading">
+        <span class="stream-status-indicator" aria-hidden="true"></span>
+        <span class="stream-status-copy"><span class="eyebrow">LIVE DATA & QUALITY</span><strong id="stream-status-title">Loading the current view</strong><span id="stream-status-detail">Open for dataset progress and detail settings.</span></span>
+        <span class="stream-status-arrow" aria-hidden="true">↗</span>
+      </button>
+
+      <div class="heading-display" aria-label="Viewing direction"><span id="compass-direction">ESE</span><strong id="heading">115<span>°</span></strong><div class="compass-line" aria-hidden="true"><i></i><i></i><i></i><i class="needle"></i><i></i><i></i><i></i></div></div>
+      <div class="reticle" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+      <section id="loading-card" class="loading-card" role="status">
+        <div class="loading-orbit" aria-hidden="true"></div>
+        <p class="eyebrow">OPENING THE OBSERVATORY</p>
+        <h1>Finding the ridge.</h1>
+        <p id="loading-message">Connecting to real terrain at 47°48′05.0″N, 122°57′09.7″W.</p>
+        <button id="loading-connect" class="primary-button" hidden>Connect terrain service <span>↗</span></button>
+      </section>
+
+      <aside id="controls" class="control-panel" aria-label="Observation controls">
+        <div class="panel-title"><span class="eyebrow">YOUR OBSERVATION</span><button id="close-controls" class="icon-button" aria-label="Close observation controls">×</button></div>
+
+        <section class="control-section">
+          <div class="section-heading"><h2>Time & sky</h2><span id="night-status" class="pill">NIGHT</span></div>
+          <label class="field-label" for="date-time">LOCAL DATE & TIME <span id="time-zone">PDT</span></label>
+          <input id="date-time" type="datetime-local" min="1900-01-01T00:00" max="2100-12-31T23:59" aria-describedby="time-error date-sky-description" />
+          <p id="time-error" class="field-error" role="alert" hidden></p>
+          <p id="date-sky-description" class="help-text">The date sets the Moon’s phase and position, and the star field. Changing it restores automatic moonlight.</p>
+          <div class="time-shortcuts"><button id="earlier" title="One hour earlier">−1 hour</button><button id="tonight">Tonight · 11 PM</button><button id="later" title="One hour later">+1 hour</button></div>
+          <div class="moon-heading"><label for="moonlight">Moonlight</label><button id="moon-auto" class="text-button active" title="Use the selected date’s lunar illumination">AUTO</button></div>
+          <div class="range-row"><svg class="range-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z"/></svg><input id="moonlight" type="range" min="0" max="100" value="0" aria-label="Manual moonlight intensity" /><output id="moon-value" for="moonlight">0%</output></div>
+          <p class="help-text" id="moon-description">Date-based illumination</p>
+          <div class="sky-readouts"><span>Moon illuminated <strong id="moon-phase">—</strong></span><span>Altitude <strong id="moon-altitude">—</strong></span></div>
+          <div class="moon-heading city-heading"><label for="city-brightness">City brightness</label><button id="city-reset" class="text-button" type="button" title="Restore estimated city brightness">RESET</button></div>
+          <div class="range-row"><svg class="range-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V9h6v12m0-15V3h7v18m0-8h5v8M1 21h22M6 12h.01M6 16h.01M12 7h.01M12 11h.01M12 15h.01M19 16h.01"/></svg><input id="city-brightness" type="range" min="0" max="300" step="1" value="100" aria-describedby="city-description stars-readout" /><output id="city-value" for="city-brightness">100%</output></div>
+          <div class="range-labels city-range-labels"><span>Dark</span><span>Estimated</span><span>Bright</span></div>
+          <p id="city-description" class="help-text">Changes estimated city lights and skyglow. Brighter cities make faint stars harder to see.</p>
+          <p id="stars-readout" class="stars-readout">Star visibility follows the selected date, Moon, and city brightness.</p>
+        </section>
+
+        <section class="control-section">
+          <div class="section-heading"><h2>Point of view</h2><button id="eye-level" class="text-button">EYE LEVEL</button></div>
+          <label class="field-label" for="height">HEIGHT ABOVE GROUND</label>
+          <div class="height-input"><input id="height" type="number" min="0.5" max="30000" step="0.5" value="6" /><span>ft</span><span id="height-meters">1.83 m</span></div>
+          <input id="height-range" class="height-range" type="range" min="0" max="1000" value="228" aria-label="Height above ground on a logarithmic scale" />
+          <div class="range-labels"><span>½ ft</span><span>30,000 ft</span></div>
+          <label class="field-label" for="speed">MOVEMENT SPEED</label>
+          <select id="speed"><option value="1.4">Walk · 3 mph</option><option value="15" selected>Explore · 34 mph</option><option value="140">Fly · 313 mph</option><option value="700">Fast flight · 1,566 mph</option></select>
+          <button id="face-seattle" class="outline-button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/></svg>Face Seattle<span>↗</span></button>
+        </section>
+
+        <section class="control-section conditions-section">
+          <div class="section-heading"><h2>Conditions</h2><span class="condition-dot"></span></div>
+          <div class="condition-row"><span>Atmospheric visibility</span><strong>Unlimited</strong></div>
+          <div class="condition-row"><span>Vegetation obstructions</span><strong>None</strong></div>
+          <div class="condition-row"><span>Light pollution</span><strong>Regional estimate</strong></div>
+          <div class="surface-switch" role="group" aria-label="Surface appearance"><button id="satellite" aria-pressed="true">Satellite</button><button id="relief" aria-pressed="false">Terrain relief</button></div>
+        </section>
+        <button id="data-button" class="data-connection" aria-haspopup="dialog" aria-controls="status-dialog"><span id="connection-dot" class="connection-dot"></span><span id="connection-label">Connecting geographic data</span><span>↗</span></button>
+      </aside>
+
+      <section class="location-card" aria-label="Current observation location">
+        <div class="eyebrow"><span class="live-dot"></span> THE VIEW FROM</div>
+        <h1 id="location-name">Quilcene Ridge<span>Washington</span></h1>
+        <p id="coordinates">47°48′05.0″N &nbsp; 122°57′09.7″W</p>
+        <div class="location-stats"><div><span>TO SEATTLE</span><strong id="distance">31.9 <small>mi</small></strong></div><div><span>EYE HEIGHT</span><strong id="eye-height">6 <small>ft</small></strong></div><div><span>TERRAIN ELEV.</span><strong id="elevation">— <small>ft</small></strong></div></div>
+      </section>
+
+      <section class="lens-dock" aria-label="Lens presets">
+        <div class="lens-dock-heading"><span class="eyebrow">OPTICS</span><span id="fov-readout">60.0° horizontal field of view</span></div>
+        <div id="lenses" class="lens-buttons" role="group" aria-label="Select a lens"></div>
+        <p id="lens-description">An unmagnified, 60° window onto the world.</p>
+      </section>
+      <div class="navigation-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span><i></i><span><kbd>Q</kbd><kbd>E</kbd> height</span><i></i><span>drag to look</span><i></i><span>scroll for lenses</span></div>
+      <div class="data-status" id="data-status" aria-live="polite">Waiting for geographic data</div>
+      <div id="toast" class="toast" role="status" hidden></div>
+    </main>
+
+    <dialog id="status-dialog" aria-labelledby="status-title" aria-describedby="status-explanation">
+      <div class="dialog-heading"><span class="eyebrow">THE CURRENT VIEW</span><button class="icon-button" type="button" data-close="status-dialog" aria-label="Close data and quality">×</button></div>
+      <h2 id="status-title">Data & quality</h2>
+      <p id="status-summary" class="status-summary" role="status">Connecting to the observatory’s data sources.</p>
+      <p id="status-explanation">Progress describes the current view. Moving, changing lenses, or raising detail can request more tiles. Ready means this view has settled; it does not mean the whole world has downloaded.</p>
+      <div class="status-legend" aria-label="Dataset status legend"><span data-state="loading"><i aria-hidden="true"></i>Loading</span><span data-state="refining"><i aria-hidden="true"></i>Refining</span><span data-state="ready"><i aria-hidden="true"></i>Ready</span><span data-state="unavailable"><i aria-hidden="true"></i>Unavailable</span></div>
+      <div id="status-rows" class="status-rows" aria-label="Dataset progress and quality"></div>
+      <div class="quality-explanation"><span class="eyebrow">DETAIL SETTINGS · 1× / 2× / 4×</span><p>Higher detail loads finer source tiles where available and supersamples the view. Interpolation smooths existing data; it does not add measured detail.</p><p>Source coverage and resolution still set the limit. Higher settings can take longer and use more graphics memory.</p></div>
+      <div class="status-actions"><button id="status-connection" class="outline-button" type="button">Connection settings <span>↗</span></button><button id="status-reset-quality" class="text-button" type="button">RESET DETAIL TO 1×</button></div>
+    </dialog>
+
+    <dialog id="connection-dialog" aria-labelledby="connection-title">
+      <form id="connect-form">
+        <div class="dialog-heading"><span class="eyebrow">GEOGRAPHIC DATA</span><button type="button" class="icon-button" data-close="connection-dialog" aria-label="Close connection settings">×</button></div>
+        <h2 id="connection-title">Connect your world.</h2>
+        <p>Terrain, satellite imagery, and real building geometry stream from Cesium ion. The app tries Cesium’s limited evaluation access first; use your own token for continued use.</p>
+        <ol><li>Create a <a href="https://ion.cesium.com/" target="_blank" rel="noreferrer">Cesium ion account ↗</a>.</li><li>Include <b>Cesium World Terrain</b>, <b>Cesium OSM Buildings</b>, and <b>Bing Maps Aerial</b> in your available assets. <b>The Earth at Night</b> is optional.</li><li>Copy a public, read-only token from <a href="https://ion.cesium.com/tokens" target="_blank" rel="noreferrer">Access Tokens ↗</a>. Allow this app’s URL if you restrict URLs.</li></ol>
+        <label class="field-label" for="ion-token">CESIUM ION ACCESS TOKEN</label>
+        <input id="ion-token" type="password" autocomplete="off" placeholder="Paste your public access token" spellcheck="false" />
+        <label class="checkbox-label"><input id="remember-token" type="checkbox" /> Remember on this device</label>
+        <p class="help-text">Otherwise kept only in this browser tab’s session. The token is sent directly to Cesium and its data services.</p>
+        <button class="primary-button" type="submit">Connect real-world data <span>↗</span></button>
+        <button id="evaluation" type="button" class="outline-button">Retry evaluation access</button>
+        <div class="connection-readouts"><div><span>Terrain</span><strong id="terrain-status">—</strong></div><div><span>Buildings</span><strong id="building-status">—</strong></div><div><span>Imagery</span><strong id="imagery-status">—</strong></div></div>
+      </form>
+    </dialog>
+
+    <dialog id="about-dialog" aria-labelledby="about-title">
+      <div class="dialog-heading"><span class="eyebrow">ABOUT THIS VIEW</span><button class="icon-button" data-close="about-dialog" aria-label="Close simulation information">×</button></div>
+      <h2 id="about-title">A little perspective.</h2>
+      <p>City Nights is an ideal-clear, first-person observatory. The Earth is curved. Terrain and building geometry obstruct the view, and distant objects retain their actual angular scale.</p>
+      <dl class="about-facts"><dt>Real geography</dt><dd>Cesium World Terrain and OSM Buildings. Building coverage, heights, and terrain resolution vary. No tree geometry is added; satellite ground textures can still show forest. Six-foot ground clearance depends on the source elevation model.</dd><dt>Estimated night lighting</dt><dd>Illuminated windows, moonlight brightness, and regional skyglow are models, not measured reproductions. Optional NASA Black Marble imagery supplies broad city-light patterns. City brightness changes estimated lighting and skyglow, affecting faint-star visibility. Display brightness and your own dark adaptation affect appearance.</dd><dt>Astronomical sky</dt><dd>Real J2000 catalog stars transformed to the selected date and location. Moon position and phase follow the date; the slider overrides illumination until the date changes or Auto is selected. A Moon below the horizon supplies no direct light. Standard celestial refraction is included; variable terrestrial refraction and weather are not.</dd><dt>Data and detail</dt><dd>Each dataset has a detail setting in Data & quality. Finer source tiles are requested where available; supersampling improves display edges. Interpolation smooths existing data without adding measured detail. Source coverage, resolution, graphics memory, and network speed still limit the view.</dd><dt>Lens presets</dt><dd>Rectilinear, 36 mm full-frame equivalent focal lengths. The naked-eye preset is a 60° horizontal viewing window. Perceived 1× size depends on your screen and viewing distance. Zoom changes framing, with the same naked-eye sensitivity; it adds no telescope light gathering or long-exposure effect.</dd><dt>Date and time</dt><dd>Pacific time with automatic PST/PDT. Buildings and night-light imagery use the available dataset vintage; selecting a historical date changes the sky, not the city’s construction history. The repeated autumn hour uses its first occurrence.</dd></dl>
+      <p class="credits-links">Built with <a href="https://cesium.com/" target="_blank" rel="noreferrer">CesiumJS</a> · <a href="https://github.com/cosinekitty/astronomy" target="_blank" rel="noreferrer">Astronomy Engine</a> · <a href="/data/STARS-LICENSE.txt" target="_blank">HYG star catalog & license</a></p>
+      <p class="help-text">Explore within 110 km of the starting ridge. Height is always measured above terrain; buildings remain visible but do not provide collision physics.</p>
+    </dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
