@@ -47,7 +47,6 @@ export class Observatory extends EventTarget {
     scene.globe.depthTestAgainstTerrain = true;
     scene.globe.enableLighting = true;
     scene.globe.showGroundAtmosphere = false;
-    scene.globe.maximumScreenSpaceError = 1.2;
     scene.globe.tileCacheSize = 500;
     scene.globe.baseColor = C.Color.fromCssColorString('#071019');
     scene.globe.show = false; // Never present the ellipsoid as a resolved ridge.
@@ -140,13 +139,6 @@ export class Observatory extends EventTarget {
       this.terrain = terrain;
       this.trackProvider(terrain, 'requestTileGeometry', 'terrain', generation);
       this.data.connected('terrain', 'Resolving observer height');
-      terrain.errorEvent.addEventListener(() => {
-        if (generation !== this.generation) return;
-        this.terrainDegraded = true;
-        this.data.warn('terrain', 'Some terrain requests failed · reconnect to retry');
-        this.state.terrainStatus = 'Some terrain unavailable · reconnect to retry';
-        this.emit('change');
-      });
       this.state.terrainStatus = 'Resolving ground';
       const sampled = await C.sampleTerrainMostDetailed(terrain, [C.Cartographic.fromDegrees(this.state.longitude, this.state.latitude)]);
       if (generation !== this.generation) return;
@@ -191,11 +183,6 @@ export class Observatory extends EventTarget {
       this.trackProvider(provider, 'requestImage', 'satellite', generation);
       this.data.connected('satellite');
       this.aerial = this.viewer.imageryLayers.addImageryProvider(provider);
-      provider.errorEvent.addEventListener(() => {
-        if (generation !== this.generation) return;
-        this.data.warn('satellite', 'Some satellite imagery unavailable · reconnect to retry');
-        this.state.imageryStatus = 'Some imagery unavailable'; this.emit('change');
-      });
       this.state.imageryStatus = 'Satellite connected';
       this.updateEnvironment();
     } catch {
@@ -206,13 +193,16 @@ export class Observatory extends EventTarget {
     // Optional NASA Black Marble adds broad, faint surface-light patterns.
     // This is lit imagery; independent facade emission comes from the UNLIT shader.
     try {
-      const provider = await C.IonImageryProvider.fromAssetId(3812);
+      // Public NASA tiles avoid requiring a separate ion asset entitlement.
+      // The published Web Mercator matrix is 256px and ends at level 8.
+      const provider = new C.UrlTemplateImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
+        maximumLevel: 8,
+        credit: new C.Credit('NASA GIBS · Suomi NPP VIIRS Earth at Night (2012 composite)'),
+      });
       if (generation !== this.generation) return;
       this.trackProvider(provider, 'requestImage', 'nightLights', generation);
       this.data.connected('nightLights');
-      provider.errorEvent.addEventListener(() => {
-        if (generation === this.generation) this.data.warn('nightLights', 'Some night imagery unavailable · reconnect to retry');
-      });
       this.nightImagery = this.viewer.imageryLayers.addImageryProvider(provider);
       this.nightImagery.brightness = 0.75;
       this.updateEnvironment();
@@ -323,11 +313,40 @@ export class Observatory extends EventTarget {
   trackProvider(provider, method, id, generation) {
     const original = provider[method];
     const owner = this;
+    const attempts = new Map();
+    const keyFor = (x, y, level) => `${level}/${x}/${y}`;
+    provider.errorEvent.addEventListener(error => {
+      if (generation !== owner.generation) return;
+      const key = keyFor(error.x, error.y, error.level);
+      const count = attempts.get(key) || 0;
+      const permanent = [400, 401, 403, 404].includes(error.error?.statusCode);
+      // Cesium creates a fresh scheduled request when retry is true. Track
+      // attempts per tile: its shared error object's timesRetried is per layer.
+      error.retry = !permanent && count < 2;
+      attempts.set(key, count + 1);
+      if (error.retry) {
+        owner.data.markRefining([id], 'Retrying a temporary tile failure');
+        owner.viewer.scene.requestRender();
+        return;
+      }
+      owner.data.fail(id, `Some ${owner.data.rows.get(id).label.toLowerCase()} unavailable · use Retry data`);
+      if (id === 'terrain') {
+        owner.terrainDegraded = true;
+        owner.state.terrainStatus = 'Some terrain unavailable · use Retry data';
+      }
+      if (id === 'satellite') owner.state.imageryStatus = 'Some imagery unavailable · use Retry data';
+      owner.emit('change');
+    });
     provider[method] = function (...args) {
       const result = original.apply(this, args);
+      if (generation !== owner.generation || result === undefined) return result;
       const request = args[3];
-      return generation === owner.generation ? owner.data.track(id, result,
-        () => request?.cancelled || request?.state === C.RequestState.CANCELLED) : result;
+      const tracked = owner.data.track(id, result,
+        () => request?.cancelled || request?.state === C.RequestState.CANCELLED, false);
+      return tracked?.then ? tracked.then(value => {
+        attempts.delete(keyFor(...args));
+        return value;
+      }) : tracked;
     };
   }
 

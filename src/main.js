@@ -243,6 +243,12 @@ $('data-button').addEventListener('click', () => { updateDataUI(); if (!$('statu
 $('stream-status-button').addEventListener('click', () => { updateDataUI(); if (!$('status-dialog').open) $('status-dialog').show(); });
 $('status-connection').addEventListener('click', () => { $('status-dialog').close(); showDialog('connection-dialog'); });
 $('status-reset-quality').addEventListener('click', () => world?.resetQuality());
+$('status-retry').addEventListener('click', () => {
+  if (!world) return;
+  world.keys.clear();
+  toast('Retrying geographic data at your current viewpoint.');
+  world.connect(evaluationToken(), world.state.source);
+});
 $('loading-connect').addEventListener('click', () => showDialog('connection-dialog'));
 $('info').addEventListener('click', () => showDialog('about-dialog'));
 document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));

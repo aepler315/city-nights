@@ -37,11 +37,11 @@ export function qualitySettings(
     throw new RangeError('Base resolution scale must be positive and finite.');
   }
 
-  const terrainSSE = 1.2 / selections.terrain;
-  const buildingSSE = 1 / selections.buildings;
+  const terrainSSE = 2 / selections.terrain;
+  const buildingSSE = 4 / selections.buildings;
   // Cesium 1.146 selects imagery detail from terrain tile geometric error and
   // clamps it to the provider's maximumLevel. There is no per-layer imagery SSE.
-  const imagerySSE = 1.2 / Math.max(selections.satellite, selections.nightLights);
+  const imagerySSE = 2 / Math.max(selections.satellite, selections.nightLights);
   const requestedResolutionScale = baseResolutionScale * Math.sqrt(Math.max(...Object.values(selections)));
   const textureLimit = Math.floor(maxTextureSize);
   const resolutionScale = Math.min(

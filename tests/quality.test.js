@@ -11,12 +11,12 @@ test('each dataset starts at native quality and changing one selection does not 
   assert.deepEqual(DATASET_IDS, ['terrain', 'buildings', 'satellite', 'nightLights', 'stars']);
 });
 
-test('native quality preserves existing terrain and building refinement thresholds', () => {
+test('native quality starts with a practical source detail budget', () => {
   const settings = qualitySettings(defaultQuality(), 1920, 1080, 8192, 1.5);
-  assert.equal(settings.terrainSSE, 1.2);
-  assert.equal(settings.buildingSSE, 1);
-  assert.equal(settings.imagerySSE, 1.2);
-  assert.equal(settings.globeSSE, 1.2);
+  assert.equal(settings.terrainSSE, 2);
+  assert.equal(settings.buildingSSE, 4);
+  assert.equal(settings.imagerySSE, 2);
+  assert.equal(settings.globeSSE, 2);
   assert.equal(settings.resolutionScale, 1.5);
   assert.equal(settings.renderWidth, 2880);
   assert.equal(settings.renderHeight, 1620);
@@ -25,21 +25,21 @@ test('native quality preserves existing terrain and building refinement threshol
 
 test('terrain and buildings refine their own source levels independently', () => {
   const terrain = qualitySettings({ terrain: 4 }, 1000, 500, 8192);
-  assert.equal(terrain.terrainSSE, 0.3);
-  assert.equal(terrain.buildingSSE, 1);
-  assert.equal(terrain.globeSSE, 0.3);
+  assert.equal(terrain.terrainSSE, 0.5);
+  assert.equal(terrain.buildingSSE, 4);
+  assert.equal(terrain.globeSSE, 0.5);
   const buildings = qualitySettings({ buildings: 2 }, 1000, 500, 8192);
-  assert.equal(buildings.terrainSSE, 1.2);
-  assert.equal(buildings.buildingSSE, 0.5);
-  assert.equal(buildings.globeSSE, 1.2);
+  assert.equal(buildings.terrainSSE, 2);
+  assert.equal(buildings.buildingSSE, 2);
+  assert.equal(buildings.globeSSE, 2);
 });
 
 test('satellite and night imagery request finer source tiles through the shared globe refinement', () => {
   const settings = qualitySettings({ satellite: 2, nightLights: 4 }, 1000, 500, 8192);
-  assert.equal(settings.imagerySSE, 0.3);
-  assert.equal(settings.globeSSE, 0.3);
-  assert.equal(settings.terrainSSE, 1.2);
-  assert.equal(settings.buildingSSE, 1);
+  assert.equal(settings.imagerySSE, 0.5);
+  assert.equal(settings.globeSSE, 0.5);
+  assert.equal(settings.terrainSSE, 2);
+  assert.equal(settings.buildingSSE, 4);
   assert.equal(settings.datasets.satellite.mode, 'shared-source-refinement');
   assert.equal(settings.datasets.nightLights.mode, 'shared-source-refinement');
 });
@@ -50,8 +50,8 @@ test('star quality increases rendered samples without changing source refinement
   assert.equal(settings.pixelMultiplier, 4);
   assert.equal(settings.datasets.stars.mode, 'render-only');
   assert.equal(settings.datasets.stars.factor, 4);
-  assert.equal(settings.terrainSSE, 0.6);
-  assert.equal(settings.imagerySSE, 1.2);
+  assert.equal(settings.terrainSSE, 1);
+  assert.equal(settings.imagerySSE, 2);
 });
 
 test('2x means twice the rendered pixel samples and 4x means twice each framebuffer dimension', () => {
@@ -86,7 +86,7 @@ test('landscape and portrait framebuffers fit the device texture limit even when
     assert.ok(settings.renderHeight <= 2048);
     assert.ok(settings.resolutionScale < 1);
     assert.equal(settings.renderLimited, true);
-    assert.equal(settings.globeSSE, 0.3);
+    assert.equal(settings.globeSSE, 0.5);
   }
 });
 

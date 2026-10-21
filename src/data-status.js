@@ -65,7 +65,7 @@ export class DataStatus {
     this.change(id, { status: ready ? 'ready' : 'refining', detail: ready ? detail : 'Loading and refining the current view' });
   }
 
-  track(id, result, isCancelled = () => false) {
+  track(id, result, isCancelled = () => false, reportFailure = true) {
     // Cesium returns undefined when its scheduler defers a request. That is
     // queued work, not an in-flight transfer and not a completed tile.
     if (result === undefined) return result;
@@ -84,7 +84,7 @@ export class DataStatus {
       const current = this.rows.get(id);
       if (current.epoch === epoch) {
         this.setQueue(id, current.pending - 1, current.processing);
-        if (!isCancelled()) this.fail(id, 'Source request failed · reconnect to retry');
+        if (reportFailure && !isCancelled()) this.fail(id, 'Source request failed · use Retry data');
       }
       throw error;
     });
